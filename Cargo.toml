@@ -1,5 +1,5 @@
 [workspace]
-members = ["connections-core", "connections-web"]
+members = ["connections-core", "connections-web", "backend-nmrs"]
 resolver = "2"
 
 
