@@ -2,10 +2,23 @@ use axum::{
     Json, Router,
     extract::{Path, State},
     http::StatusCode,
+    response::IntoResponse,
     routing::{delete, get, post, put},
 };
 use connections_core::*;
+use thiserror::Error;
 use utoipa::OpenApi;
+
+#[derive(Error, Debug)]
+#[error("{0}")]
+pub struct ApiError(#[source] pub Box<dyn std::error::Error>);
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -> axum::response::Response {
+        (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", self.0)).into_response()
+    }
+}
+
 #[derive(Clone)]
 pub struct AppState<B: WifiBackend> {
     backend: B,
@@ -46,9 +59,12 @@ pub struct ApiDoc;
 )]
 async fn list_saved_connections<B: WifiBackend>(
     State(AppState { backend }): State<AppState<B>>,
-) -> Json<Vec<SavedWifiNetwork>> {
-    let connections = backend.list_saved_connections().await;
-    Json(connections)
+) -> Result<Json<Vec<SavedWifiNetwork>>, ApiError> {
+    let connections = backend
+        .list_saved_connections()
+        .await
+        .map_err(|e| ApiError(Box::new(e)))?;
+    Ok(Json(connections))
 }
 
 /// List available WiFi networks from a scan
@@ -62,9 +78,12 @@ async fn list_saved_connections<B: WifiBackend>(
 )]
 async fn list_available_networks<B: WifiBackend>(
     State(AppState { backend }): State<AppState<B>>,
-) -> Json<Vec<WifiNetwork>> {
-    let networks = backend.list_available_networks().await;
-    Json(networks)
+) -> Result<Json<Vec<WifiNetwork>>, ApiError> {
+    let networks = backend
+        .list_available_networks()
+        .await
+        .map_err(|e| ApiError(Box::new(e)))?;
+    Ok(Json(networks))
 }
 
 /// Delete a saved connection by ID
@@ -84,9 +103,12 @@ async fn list_available_networks<B: WifiBackend>(
 async fn delete_connection<B: WifiBackend>(
     State(AppState { backend }): State<AppState<B>>,
     Path(_id): Path<String>,
-) -> StatusCode {
-    backend.delete_connection(_id).await;
-    StatusCode::NO_CONTENT
+) -> Result<impl IntoResponse, ApiError> {
+    backend
+        .delete_connection(_id)
+        .await
+        .map_err(|e| ApiError(Box::new(e)))?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// Update the priority of a saved connection
@@ -108,9 +130,12 @@ async fn update_priority<B: WifiBackend>(
     State(AppState { backend }): State<AppState<B>>,
     Path(_id): Path<String>,
     Json(request): Json<UpdatePriorityRequest>,
-) -> (StatusCode, Json<SavedWifiNetwork>) {
-    let connection = backend.update_priority(request.id, request.priority).await;
-    (StatusCode::OK, Json(connection))
+) -> Result<(StatusCode, Json<SavedWifiNetwork>), ApiError> {
+    let connection = backend
+        .update_priority(request.id, request.priority)
+        .await
+        .map_err(|e| ApiError(Box::new(e)))?;
+    Ok((StatusCode::OK, Json(connection)))
 }
 
 /// Save a WiFi network or create a hotspot
@@ -127,9 +152,12 @@ async fn update_priority<B: WifiBackend>(
 async fn save_network<B: WifiBackend>(
     State(AppState { backend }): State<AppState<B>>,
     Json(request): Json<SaveNetworkRequest>,
-) -> (StatusCode, Json<SavedWifiNetwork>) {
-    let network = backend.save_network(request).await;
-    (StatusCode::CREATED, Json(network))
+) -> Result<(StatusCode, Json<SavedWifiNetwork>), ApiError> {
+    let network = backend
+        .save_network(request)
+        .await
+        .map_err(|e| ApiError(Box::new(e)))?;
+    Ok((StatusCode::CREATED, Json(network)))
 }
 
 /// Build the API router with the given backend implementation.

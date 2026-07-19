@@ -68,25 +68,32 @@ pub struct UpdatePriorityRequest {
 /// Trait for interacting with WiFi networks on the OS level.
 /// Implementations can provide different backends (e.g., NetworkManager, wpa_supplicant).
 pub trait WifiBackend: Clone + Send + Sync + 'static {
+    type Error: std::error::Error;
+
     /// List all saved connections (networks and hotspots)
-    fn list_saved_connections(&self) -> impl Future<Output = Vec<SavedWifiNetwork>> + Send;
+    fn list_saved_connections(
+        &self,
+    ) -> impl Future<Output = Result<Vec<SavedWifiNetwork>, Self::Error>> + Send;
 
     /// List available WiFi networks from a scan
-    fn list_available_networks(&self) -> impl Future<Output = Vec<WifiNetwork>> + Send;
+    fn list_available_networks(
+        &self,
+    ) -> impl Future<Output = Result<Vec<WifiNetwork>, Self::Error>> + Send;
 
     /// Save a WiFi network or create a hotspot
     fn save_network(
         &self,
         request: SaveNetworkRequest,
-    ) -> impl Future<Output = SavedWifiNetwork> + Send;
+    ) -> impl Future<Output = Result<SavedWifiNetwork, Self::Error>> + Send;
 
     /// Delete a saved connection by ID
-    fn delete_connection(&self, id: String) -> impl Future<Output = ()> + Send;
+    fn delete_connection(&self, id: String)
+    -> impl Future<Output = Result<(), Self::Error>> + Send;
 
     /// Update the priority of a saved connection
     fn update_priority(
         &self,
         id: String,
         priority: i32,
-    ) -> impl Future<Output = SavedWifiNetwork> + Send;
+    ) -> impl Future<Output = Result<SavedWifiNetwork, Self::Error>> + Send;
 }
