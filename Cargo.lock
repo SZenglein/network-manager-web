@@ -224,8 +224,6 @@ version = "0.1.0"
 dependencies = [
  "connections-core",
  "nmrs",
- "tokio",
- "uuid",
 ]
 
 [[package]]
@@ -284,9 +282,7 @@ dependencies = [
 name = "connections-core"
 version = "0.1.0"
 dependencies = [
- "futures",
  "serde",
- "serde_json",
  "utoipa",
 ]
 
@@ -296,10 +292,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "connections-core",
- "serde",
- "serde_json",
  "thiserror",
- "tokio",
  "utoipa",
 ]
 
@@ -308,22 +301,6 @@ name = "crossbeam-utils"
 version = "0.8.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a31eee39dddec8330830986fcd7625edb5a24ec90ea038215273bbc3adb08ac6"
-
-[[package]]
-name = "demo"
-version = "0.1.0"
-dependencies = [
- "axum",
- "backend-nmrs",
- "connections-core",
- "connections-web",
- "nmrs",
- "serde",
- "serde_json",
- "tokio",
- "tower",
- "tower-http",
-]
 
 [[package]]
 name = "endi"
@@ -1024,6 +1001,17 @@ checksum = "c4db69cba1110affc0e9f7bcd48bbf87b3f4fc7c61fc9155afd4c469eb3d6c1b"
 dependencies = [
  "errno",
  "libc",
+]
+
+[[package]]
+name = "simple-gui"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "backend-nmrs",
+ "connections-web",
+ "tokio",
+ "tower-http",
 ]
 
 [[package]]

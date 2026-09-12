@@ -13,6 +13,7 @@ pub struct NetworkManagerBackend {
 
 impl NetworkManagerBackend {
     /// Create a new backend with a NetworkManager connection
+    #[allow(clippy::result_large_err)]
     pub async fn new() -> Result<Self, nmrs::ConnectionError> {
         Ok(Self {
             nm: NetworkManager::new().await?,

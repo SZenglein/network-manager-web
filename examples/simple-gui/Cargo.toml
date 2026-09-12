@@ -1,18 +1,17 @@
 [package]
-name = "demo"
+name = "simple-gui"
 version = "0.1.0"
 edition = "2024"
+publish = false
+
+[[bin]]
+name = "simple-gui"
+path = "src/main.rs"
 
 [dependencies]
-nmrs = "3.5.2"
-
-connections-core = { workspace = true }
 backend-nmrs = { workspace = true }
 connections-web = { workspace = true }
-tokio = { workspace = true, features = ["full"] }
+
+tokio = { version = "1.53.1", features = ["full"] }
 axum = { version = "0.8.9", features = ["macros"] }
 tower-http = { version = "0.6", features = ["fs"] }
-tower = "0.5"
-
-serde = "1.0.229"
-serde_json = "1.0.150"
