@@ -103,4 +103,10 @@ pub trait WifiBackend: Clone + Send + Sync + 'static {
     /// Delete a saved connection by ID
     fn delete_connection(&self, id: String)
     -> impl Future<Output = Result<(), Self::Error>> + Send;
+
+    /// Activate a saved connection by ID (UUID)
+    fn activate_connection(
+        &self,
+        id: String,
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 }

@@ -207,6 +207,7 @@
                     <td>${formatSecurity(conn.security)}</td>
                     <td>${conn.autoconnect ? 'Yes' : 'No'} (prio: ${conn.autoconnect_priority})</td>
                     <td class="actions">
+                        <button onclick="activateConnection('${conn.id}')">Activate</button>
                         <button class="delete" onclick="deleteConnection('${conn.id}')">Delete</button>
                     </td>
                 `;
@@ -229,6 +230,25 @@
                 loadSavedConnections();
             } catch (e) {
                 result.textContent = `Error deleting connection: ${e.message}`;
+                result.className = 'error';
+            }
+        }
+
+        // Activate a connection
+        async function activateConnection(id) {
+            const result = document.getElementById('saved-result');
+            result.textContent = '';
+
+            try {
+                const resp = await fetch(`${API_BASE}/saved/${encodeURIComponent(id)}/activate`, {
+                    method: 'POST'
+                });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                result.textContent = 'Connection activated successfully';
+                result.className = 'success';
+                loadSavedConnections();
+            } catch (e) {
+                result.textContent = `Error activating connection: ${e.message}`;
                 result.className = 'error';
             }
         }

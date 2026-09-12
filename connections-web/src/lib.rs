@@ -31,6 +31,7 @@ pub struct AppState<B: WifiBackend> {
         list_available_networks,
         delete_connection,
         save_network,
+        activate_connection,
     ),
     components(
         schemas(
@@ -131,6 +132,31 @@ async fn save_network<B: WifiBackend>(
     Ok((StatusCode::CREATED, ()))
 }
 
+/// Activate a saved connection by ID (UUID)
+#[utoipa::path(
+    tag = "wifi",
+    post,
+    path = "/api/connections/{id}/activate",
+    params(
+        ("id" = String, Path, description = "Connection ID (UUID) to activate"),
+    ),
+    responses(
+        (status = 200, description = "Connection activated successfully"),
+        (status = 404, description = "Connection not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
+async fn activate_connection<B: WifiBackend>(
+    State(AppState { backend }): State<AppState<B>>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, ApiError> {
+    backend
+        .activate_connection(id)
+        .await
+        .map_err(|e| ApiError(Box::new(e)))?;
+    Ok(StatusCode::OK)
+}
+
 /// Build the API router with the given backend implementation.
 pub fn router<B: WifiBackend>(backend: B) -> Router {
     let state = AppState { backend };
@@ -140,6 +166,10 @@ pub fn router<B: WifiBackend>(backend: B) -> Router {
         .route("/connections/available", get(list_available_networks::<B>))
         .route("/connections/saved/{id}", delete(delete_connection::<B>))
         .route("/connections/saved", post(save_network::<B>))
+        .route(
+            "/connections/saved/{id}/activate",
+            post(activate_connection::<B>),
+        )
         .with_state(state)
 }
 

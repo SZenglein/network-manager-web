@@ -187,4 +187,12 @@ impl WifiBackend for NetworkManagerBackend {
     async fn delete_connection(&self, id: String) -> Result<(), Self::Error> {
         self.nm.delete_saved_connection(&id).await
     }
+
+    async fn activate_connection(&self, id: String) -> Result<(), Self::Error> {
+        use nmrs::ConnectByUuidConfig;
+
+        self.nm
+            .connect_by_uuid(&id, ConnectByUuidConfig::default())
+            .await
+    }
 }
