@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi Network Manager Demo</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 { color: #333; margin-bottom: 20px; }
+        h2 { color: #555; margin: 20px 0 10px; font-size: 1.1em; }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover { background: #0052a3; }
+        button.delete { background: #c44; }
+        button.delete:hover { background: #a00; }
+        button.secondary { background: #666; }
+        button.secondary:hover { background: #444; }
+        input, select {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-right: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th { background: #f8f8f8; color: #666; font-weight: 600; }
+        .signal-bar {
+            display: inline-block;
+            width: 60px;
+            height: 12px;
+            background: #e0e0e0;
+            border-radius: 6px;
+            position: relative;
+            overflow: hidden;
+        }
+        .signal-bar-fill {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            border-radius: 6px;
+        }
+        .actions { display: flex; gap: 8px; }
+        .status { font-size: 0.85em; color: #666; }
+        .form-row { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+        .error { color: #c44; margin-top: 10px; }
+        .success { color: #4caf50; margin-top: 10px; }
+        .security-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            background: #e0e0e0;
+            color: #555;
+            margin-right: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>WiFi Network Manager Demo</h1>
+
+    <div class="card">
+        <h2>Available Networks</h2>
+        <button onclick="refreshNetworks()">Refresh</button>
+        <div id="available-result"></div>
+        <div id="available-list"></div>
+    </div>
+
+    <div class="card">
+        <h2>Saved Connections</h2>
+        <button onclick="loadSavedConnections()">Refresh</button>
+        <div id="saved-result"></div>
+        <table id="saved-table">
+            <thead>
+                <tr>
+                    <th>SSID</th>
+                    <th>Mode</th>
+                    <th>Band</th>
+                    <th>Security</th>
+                    <th>Autoconnect</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="saved-body"></tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Save New Network</h2>
+        <div class="form-row">
+            <input type="text" id="new-ssid" placeholder="SSID" required>
+            <select id="new-mode">
+                <option value="Sta">Station (Connect)</option>
+                <option value="Ap">Access Point (Hotspot)</option>
+            </select>
+            <select id="new-band">
+                <option value="Auto">Auto</option>
+                <option value="Ghz2_4">2.4 GHz</option>
+                <option value="Ghz5">5 GHz</option>
+            </select>
+        </div>
+        <div class="form-row">
+            <select id="new-security-type">
+                <option value="Open">Open</option>
+                <option value="WpaPsk">WPA2/WPA3 Personal</option>
+            </select>
+            <input type="password" id="new-password" placeholder="Password (if secured)">
+        </div>
+        <div class="form-row">
+            <label><input type="checkbox" id="new-autoconnect" checked> Autoconnect</label>
+            <input type="number" id="new-priority" placeholder="Priority" value="0" style="width: 80px;">
+            <button onclick="saveNetwork()">Save Network</button>
+        </div>
+        <div id="save-result"></div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/connections';
+
+        // Security type to tag styling
+        const securityColors = {
+            Open: '#4caf50',
+            Wep: '#ff9800',
+            Wpa2Personal: '#2196f3',
+            Wpa3Personal: '#2196f3',
+            Enterprise: '#9c27b0'
+        };
+
+        // Format security types as tags
+        function formatSecurity(sec) {
+            if (Array.isArray(sec)) {
+                return sec.map(s => `<span class="security-tag" style="background:${securityColors[s] || '#e0e0e0'}">${s}</span>`).join('');
+            }
+            return `<span class="security-tag" style="background:${securityColors[sec] || '#e0e0e0'}">${sec}</span>`;
+        }
+
+        // Signal bar visualization
+        function signalBar(strength) {
+            if (strength === undefined) return '';
+            const pct = Math.min(100, Math.max(0, strength));
+            return `<div class="signal-bar" title="${pct}%"><div class="signal-bar-fill" style="width: ${pct}%"></div></div>`;
+        }
+
+        // Load saved connections
+        async function loadSavedConnections() {
+            const result = document.getElementById('saved-result');
+            result.textContent = '';
+            result.className = '';
+
+            try {
+                const resp = await fetch(`${API_BASE}/saved`);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const connections = await resp.json();
+                renderSavedConnections(connections);
+            } catch (e) {
+                result.textContent = `Error loading saved connections: ${e.message}`;
+                result.className = 'error';
+            }
+        }
+
+        // Render saved connections table
+        function renderSavedConnections(connections) {
+            const tbody = document.getElementById('saved-body');
+            tbody.innerHTML = '';
+
+            if (!connections || connections.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6">No saved connections</td></tr>';
+                return;
+            }
+
+            connections.forEach(conn => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${esc(conn.ssid)}</strong><br><small class="status">${conn.id.slice(0,8)}...</small></td>
+                    <td>${conn.mode}</td>
+                    <td>${conn.band}</td>
+                    <td>${formatSecurity(conn.security)}</td>
+                    <td>${conn.autoconnect ? 'Yes' : 'No'} (prio: ${conn.autoconnect_priority})</td>
+                    <td class="actions">
+                        <button class="delete" onclick="deleteConnection('${conn.id}')">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Delete a connection
+        async function deleteConnection(id) {
+            const result = document.getElementById('saved-result');
+            result.textContent = '';
+
+            try {
+                const resp = await fetch(`${API_BASE}/saved/${encodeURIComponent(id)}`, {
+                    method: 'DELETE'
+                });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                result.textContent = 'Connection deleted successfully';
+                result.className = 'success';
+                loadSavedConnections();
+            } catch (e) {
+                result.textContent = `Error deleting connection: ${e.message}`;
+                result.className = 'error';
+            }
+        }
+
+        // Refresh available networks
+        async function refreshNetworks() {
+            const result = document.getElementById('available-result');
+            result.textContent = '';
+            result.className = '';
+
+            try {
+                const resp = await fetch(`${API_BASE}/available`);
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const networks = await resp.json();
+                renderAvailableNetworks(networks);
+            } catch (e) {
+                result.textContent = `Error scanning networks: ${e.message}`;
+                result.className = 'error';
+            }
+        }
+
+        // Refresh and render available networks on page load
+        async function loadAvailableNetworks() {
+            await refreshNetworks();
+        }
+
+        // Render available networks
+        function renderAvailableNetworks(networks) {
+            const div = document.getElementById('available-list');
+            div.innerHTML = '';
+
+            if (!networks || networks.length === 0) {
+                div.innerHTML = '<p>No networks found</p>';
+                return;
+            }
+
+            // Sort by signal strength descending
+            networks.sort((a, b) => (b.signal_strength || 0) - (a.signal_strength || 0));
+
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>SSID</th>
+                        <th>BSSID</th>
+                        <th>Signal</th>
+                        <th>Frequency</th>
+                        <th>Security</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${networks.map(nw => `
+                        <tr>
+                            <td><strong>${esc(nw.ssid)}</strong></td>
+                            <td><code>${esc(nw.bssid)}</code></td>
+                            <td>${signalBar(nw.signal_strength)} ${nw.signal_strength}%</td>
+                            <td>${nw.frequency} MHz</td>
+                            <td>${formatSecurity(nw.security)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `;
+            div.appendChild(table);
+        }
+
+        // Save a new network
+        async function saveNetwork() {
+            const ssid = document.getElementById('new-ssid').value;
+            const mode = document.getElementById('new-mode').value;
+            const band = document.getElementById('new-band').value;
+            const securityType = document.getElementById('new-security-type').value;
+            const password = document.getElementById('new-password').value;
+            const autoconnect = document.getElementById('new-autoconnect').checked;
+            const priority = parseInt(document.getElementById('new-priority').value) || 0;
+
+            const result = document.getElementById('save-result');
+            result.textContent = '';
+            result.className = '';
+
+            if (!ssid) {
+                result.textContent = 'SSID is required';
+                result.className = 'error';
+                return;
+            }
+
+            const body = {
+                ssid: ssid,
+                mode: mode,
+                band: band,
+                security: securityType === 'Open' ? { Open: null } : { WpaPsk: { password: password } },
+                autoconnect: autoconnect,
+                autoconnect_priority: priority
+            };
+
+            // Clean up the security object
+            if (securityType === 'Open') {
+                body.security = 'Open';
+            } else if (password) {
+                body.security = { WpaPsk: { password: password } };
+            } else {
+                result.textContent = 'Password is required for secured networks';
+                result.className = 'error';
+                return;
+            }
+
+            try {
+                const resp = await fetch(`${API_BASE}/saved`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+                result.textContent = 'Network saved successfully!';
+                result.className = 'success';
+                document.getElementById('new-ssid').value = '';
+                document.getElementById('new-password').value = '';
+                loadSavedConnections();
+            } catch (e) {
+                result.textContent = `Error saving network: ${e.message}`;
+                result.className = 'error';
+            }
+        }
+
+        // Simple HTML escaping
+        function esc(text) {
+            if (text === null || text === undefined) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Load saved connections and available networks on page load
+        loadSavedConnections();
+        loadAvailableNetworks();
+    </script>
+</body>
+</html>
