@@ -1,11 +1,12 @@
 [workspace]
-members = ["connections-core", "connections-web", "backend-nmrs"]
+members = ["connections-core", "connections-web", "backend-nmrs", "demo"]
 resolver = "2"
 
 
 
 [workspace.dependencies]
 connections-core = { path = "connections-core"}
+connections-web = { path = "connections-web"}
 backend-nmrs = { path = "backend-nmrs"}
 
 tokio = { version = "1.53.0", }

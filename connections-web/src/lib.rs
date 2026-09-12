@@ -3,7 +3,7 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{delete, get, post, put},
+    routing::{delete, get, post},
 };
 use connections_core::*;
 use thiserror::Error;
@@ -30,15 +30,13 @@ pub struct AppState<B: WifiBackend> {
         list_saved_connections,
         list_available_networks,
         delete_connection,
-        update_priority,
         save_network,
     ),
     components(
         schemas(
-            WifiNetwork,
+            WifiNetworkAp,
             SavedWifiNetwork,
             SaveNetworkRequest,
-            UpdatePriorityRequest,
             Mode,
         )
     ),
@@ -73,12 +71,12 @@ async fn list_saved_connections<B: WifiBackend>(
     get,
     path = "/api/networks/available",
     responses(
-        (status = 200, description = "List of available WiFi networks", body = [WifiNetwork]),
+        (status = 200, description = "List of available WiFi networks", body = [WifiNetworkAp]),
     )
 )]
 async fn list_available_networks<B: WifiBackend>(
     State(AppState { backend }): State<AppState<B>>,
-) -> Result<Json<Vec<WifiNetwork>>, ApiError> {
+) -> Result<Json<Vec<WifiNetworkAp>>, ApiError> {
     let networks = backend
         .list_available_networks()
         .await
@@ -111,33 +109,6 @@ async fn delete_connection<B: WifiBackend>(
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// Update the priority of a saved connection
-#[utoipa::path(
-    tag = "wifi",
-    put,
-    path = "/api/connections/{id}/priority",
-    params(
-        ("id" = String, Path, description = "Connection ID to update"),
-    ),
-    request_body = UpdatePriorityRequest,
-    responses(
-        (status = 200, description = "Priority updated successfully", body = SavedWifiNetwork),
-        (status = 404, description = "Connection not found"),
-        (status = 500, description = "Internal server error")
-    )
-)]
-async fn update_priority<B: WifiBackend>(
-    State(AppState { backend }): State<AppState<B>>,
-    Path(_id): Path<String>,
-    Json(request): Json<UpdatePriorityRequest>,
-) -> Result<(StatusCode, Json<SavedWifiNetwork>), ApiError> {
-    let connection = backend
-        .update_priority(request.id, request.priority)
-        .await
-        .map_err(|e| ApiError(Box::new(e)))?;
-    Ok((StatusCode::OK, Json(connection)))
-}
-
 /// Save a WiFi network or create a hotspot
 #[utoipa::path(
     tag = "wifi",
@@ -152,28 +123,26 @@ async fn update_priority<B: WifiBackend>(
 async fn save_network<B: WifiBackend>(
     State(AppState { backend }): State<AppState<B>>,
     Json(request): Json<SaveNetworkRequest>,
-) -> Result<(StatusCode, Json<SavedWifiNetwork>), ApiError> {
-    let network = backend
+) -> Result<(StatusCode, ()), ApiError> {
+    backend
         .save_network(request)
         .await
         .map_err(|e| ApiError(Box::new(e)))?;
-    Ok((StatusCode::CREATED, Json(network)))
+    Ok((StatusCode::CREATED, ()))
 }
 
 /// Build the API router with the given backend implementation.
-pub fn router<B: WifiBackend>(backend: B) -> Router<AppState<B>> {
+pub fn router<B: WifiBackend>(backend: B) -> Router {
     let state = AppState { backend };
 
     Router::new()
-        .route("/api/connections", get(list_saved_connections::<B>))
-        .route("/api/connections/{id}", delete(delete_connection::<B>))
-        .route("/api/connections/{id}/priority", put(update_priority::<B>))
-        .route("/api/networks/available", get(list_available_networks::<B>))
-        .route("/api/connections", post(save_network::<B>))
-        .route("/api-docs/openapi.json", get(get_openapi))
+        .route("/connections/saved", get(list_saved_connections::<B>))
+        .route("/connections/available", get(list_available_networks::<B>))
+        .route("/connections/saved/{id}", delete(delete_connection::<B>))
+        .route("/connections/saved", post(save_network::<B>))
         .with_state(state)
 }
 
-async fn get_openapi() -> Json<utoipa::openapi::OpenApi> {
+pub fn openapi() -> Json<utoipa::openapi::OpenApi> {
     Json(ApiDoc::openapi())
 }

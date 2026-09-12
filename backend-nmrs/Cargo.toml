@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-nmrs = "3.4.0"
+nmrs = "3.5.2"
+uuid = { version = "1.16", features = ["v4"] }
 
 connections-core = { workspace = true }
 tokio = { workspace = true }
