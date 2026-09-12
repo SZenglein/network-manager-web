@@ -1,6 +1,9 @@
-# Connections-Web
+# Network Manager Web
 
-Web API for managing connections on Linux. Only WiFi for now.
+Web API for managing network connections on Linux. Only WiFi for now.
+
+Not to be confused with the Linux `NetworkManager` utility, we may support backends other than it. 
+It **is** the only supported backend for now, though. 
 
 ## Motivation
 
