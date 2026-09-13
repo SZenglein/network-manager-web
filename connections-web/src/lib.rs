@@ -9,6 +9,13 @@ use connections_core::*;
 use thiserror::Error;
 use utoipa::OpenApi;
 
+/// Route path constants - defined once to prevent divergence between
+/// OpenAPI documentation and actual axum route definitions.
+const ROUTE_SAVED: &str = "/connections/saved";
+const ROUTE_AVAILABLE: &str = "/connections/available";
+const ROUTE_SAVED_ID: &str = "/connections/saved/{id}";
+const ROUTE_SAVED_ID_ACTIVATE: &str = "/connections/saved/{id}/activate";
+
 #[derive(Error, Debug)]
 #[error("{0}")]
 pub struct ApiError(#[source] pub Box<dyn std::error::Error>);
@@ -51,7 +58,7 @@ pub struct ApiDoc;
 #[utoipa::path(
     tag = "wifi",
     get,
-    path = "/connections/saved",
+    path = ROUTE_SAVED,
     responses(
         (status = 200, description = "List of saved connections", body = [SavedWifiNetwork]),
     )
@@ -70,7 +77,7 @@ async fn list_saved_connections<B: WifiBackend>(
 #[utoipa::path(
     tag = "wifi",
     get,
-    path = "/connections/available",
+    path = ROUTE_AVAILABLE,
     responses(
         (status = 200, description = "List of available WiFi networks", body = [WifiNetworkAp]),
     )
@@ -89,7 +96,7 @@ async fn list_available_networks<B: WifiBackend>(
 #[utoipa::path(
     tag = "wifi",
     delete,
-    path = "/connections/saved/{id}",
+    path = ROUTE_SAVED_ID,
     params(
         ("id" = String, Path, description = "Connection ID to delete"),
     ),
@@ -114,7 +121,7 @@ async fn delete_connection<B: WifiBackend>(
 #[utoipa::path(
     tag = "wifi",
     post,
-    path = "/connections/saved",
+    path = ROUTE_SAVED,
     request_body = SaveNetworkRequest,
     responses(
         (status = 201, description = "Connection saved successfully", body = SavedWifiNetwork),
@@ -136,7 +143,7 @@ async fn save_network<B: WifiBackend>(
 #[utoipa::path(
     tag = "wifi",
     post,
-    path = "/connections/saved/{id}/activate",
+    path = ROUTE_SAVED_ID_ACTIVATE,
     params(
         ("id" = String, Path, description = "Connection ID (UUID) to activate"),
     ),
@@ -162,14 +169,11 @@ pub fn router<B: WifiBackend>(backend: B) -> Router {
     let state = AppState { backend };
 
     Router::new()
-        .route("/connections/saved", get(list_saved_connections::<B>))
-        .route("/connections/available", get(list_available_networks::<B>))
-        .route("/connections/saved/{id}", delete(delete_connection::<B>))
-        .route("/connections/saved", post(save_network::<B>))
-        .route(
-            "/connections/saved/{id}/activate",
-            post(activate_connection::<B>),
-        )
+        .route(ROUTE_SAVED, get(list_saved_connections::<B>))
+        .route(ROUTE_AVAILABLE, get(list_available_networks::<B>))
+        .route(ROUTE_SAVED_ID, delete(delete_connection::<B>))
+        .route(ROUTE_SAVED, post(save_network::<B>))
+        .route(ROUTE_SAVED_ID_ACTIVATE, post(activate_connection::<B>))
         .with_state(state)
 }
 
