@@ -1,5 +1,5 @@
 [workspace]
-members = ["connections-core", "connections-web", "backend-nmrs", "examples/simple-gui"]
+members = ["connections", "connections-core", "connections-web", "backend-nmrs", "examples/simple-gui"]
 resolver = "3"
 
 

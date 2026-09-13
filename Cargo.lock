@@ -279,6 +279,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "connections"
+version = "0.1.0"
+dependencies = [
+ "backend-nmrs",
+ "connections-core",
+ "connections-web",
+]
+
+[[package]]
 name = "connections-core"
 version = "0.1.0"
 dependencies = [

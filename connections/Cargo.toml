@@ -1,0 +1,13 @@
+[package]
+name = "connections"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = []
+backend-nmrs = ["dep:backend-nmrs"]
+
+[dependencies]
+connections-core = { workspace = true }
+connections-web = { workspace = true }
+backend-nmrs = { workspace = true, optional = true }
