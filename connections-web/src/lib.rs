@@ -51,7 +51,7 @@ pub struct ApiDoc;
 #[utoipa::path(
     tag = "wifi",
     get,
-    path = "/api/connections",
+    path = "/connections/saved",
     responses(
         (status = 200, description = "List of saved connections", body = [SavedWifiNetwork]),
     )
@@ -70,7 +70,7 @@ async fn list_saved_connections<B: WifiBackend>(
 #[utoipa::path(
     tag = "wifi",
     get,
-    path = "/api/networks/available",
+    path = "/connections/available",
     responses(
         (status = 200, description = "List of available WiFi networks", body = [WifiNetworkAp]),
     )
@@ -89,7 +89,7 @@ async fn list_available_networks<B: WifiBackend>(
 #[utoipa::path(
     tag = "wifi",
     delete,
-    path = "/api/connections/{id}",
+    path = "/connections/saved/{id}",
     params(
         ("id" = String, Path, description = "Connection ID to delete"),
     ),
@@ -114,7 +114,7 @@ async fn delete_connection<B: WifiBackend>(
 #[utoipa::path(
     tag = "wifi",
     post,
-    path = "/api/connections",
+    path = "/connections/saved",
     request_body = SaveNetworkRequest,
     responses(
         (status = 201, description = "Connection saved successfully", body = SavedWifiNetwork),
@@ -136,7 +136,7 @@ async fn save_network<B: WifiBackend>(
 #[utoipa::path(
     tag = "wifi",
     post,
-    path = "/api/connections/{id}/activate",
+    path = "/connections/saved/{id}/activate",
     params(
         ("id" = String, Path, description = "Connection ID (UUID) to activate"),
     ),
@@ -173,6 +173,9 @@ pub fn router<B: WifiBackend>(backend: B) -> Router {
         .with_state(state)
 }
 
-pub fn openapi() -> Json<utoipa::openapi::OpenApi> {
-    Json(ApiDoc::openapi())
+/// The openapi documentation for `connections-web`.
+///
+/// Meant to be nested under your global api documentation, but can be used standalone.
+pub fn openapi() -> utoipa::openapi::OpenApi {
+    ApiDoc::openapi()
 }
